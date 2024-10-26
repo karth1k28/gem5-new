@@ -164,11 +164,43 @@ Router::route_compute(RouteInfo route, int inport, PortDirection inport_dirn)
     return routingUnit.outportCompute(route, inport, inport_dirn);
 }
 
+/*
 void
 Router::grant_switch(int inport, flit *t_flit)
 {
     crossbarSwitch.update_sw_winner(inport, t_flit);
 }
+
+*/
+
+//Updated
+void
+Router::grant_switch(int inport, flit *t_flit)
+{
+    // Log packet entry
+    PacketPathInfo path_info;
+    path_info.router_id = m_id;               // Current router ID
+    path_info.entry_port = inport;            // Entering port
+    path_info.timestamp = curTick();          // Current simulation tick
+
+    // Determine exit port (if available)
+    int outport = route_compute(t_flit->get_route(), inport, getInportDirection(inport));
+    path_info.exit_port = outport;
+
+    // Store path info by packet ID
+    int pkt_id = t_flit->get_id();            // Assuming flit has an ID
+    packet_paths[pkt_id].push_back(path_info);
+
+    // Print the path immediately
+    DPRINTF(RubyNetwork, "Packet %d at Router %d: Entered at port %d, Exited at port %d, Timestamp %llu\n",
+            pkt_id, m_id, inport, outport, curTick());
+
+    // Continue with the regular grant switch process
+    crossbarSwitch.update_sw_winner(inport, t_flit);
+}
+
+
+
 
 void
 Router::schedule_wakeup(Cycles time)
@@ -290,6 +322,32 @@ Router::functionalWrite(Packet *pkt)
 
     return num_functional_writes;
 }
+
+//Added
+/*void
+Router::logPacketPaths() const
+{
+    DPRINTF(RubyNetwork, "Logging packet paths...\n");  // Debug statement
+
+    for (const auto &entry : packet_paths) {
+        int pkt_id = entry.first;
+        DPRINTF(RubyNetwork, "Packet %d Path:\n", pkt_id);
+        for (const auto &info : entry.second) {
+            DPRINTF(RubyNetwork, "Router ID: %d, Entry Port: %d, Exit Port: %d, Timestamp: %llu\n",
+                    info.router_id, info.entry_port, info.exit_port, info.timestamp);
+        }
+    }
+}
+*/
+
+
+//Added
+Router::~Router()
+{
+   // logPacketPaths();  // Call the function to log packet paths at the end of the simulation
+}
+
+
 
 } // namespace garnet
 } // namespace ruby
